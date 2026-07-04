@@ -1,0 +1,58 @@
+### Variables
+@baseUrl = http://localhost:8080/api/v1/users
+@userId = 1
+
+### 1. Create a New User (Successful Validation)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+    "name": "Mani",
+    "email": "Mani@example.com",
+    "shippingAddress": "123 Microservice Lane, Cloud City, 94016"
+}
+
+
+### 2. Create a New User (Testing Validation Failures)
+# This test request will trigger the GlobalExceptionHandler Map error format because email is malformed and name is empty.
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+    "name": "",
+    "email": "invalid-email-format",
+    "shippingAddress": ""
+}
+
+
+### 3. Get All Users
+GET {{baseUrl}}
+Accept: application/json
+
+
+### 4. Get User By ID (Assuming ID 1 exists)
+GET {{baseUrl}}/{{userId}}
+Accept: application/json
+
+
+### 5. Get User By ID (Testing 404 Custom Exception)
+# This test request will trigger your ResourceNotFoundException layout.
+GET {{baseUrl}}/999
+Accept: application/json
+
+
+### 6. Get User By Email
+GET {{baseUrl}}/email/Mani1@example.com
+Accept: application/json
+
+
+### Update an Existing User
+PUT {{baseUrl}}/{{userId}}
+Content-Type: application/json
+
+{
+  "name": "New User",
+  "email": "user111@example.com",
+  "shippingAddress": "456 Production Ready Way, Suite 100, Tech City, 90210",
+  "createdAt": "2026-07-04T00:00:00Z"
+}

@@ -1,0 +1,70 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      filter:
+        request-rate-limiter:
+          deny-empty-key: true
+          empty-key-status-code: 429
+      routes:
+        - id: user-service-route
+          uri: http://localhost:8011
+          predicates:
+            - Path=/api/v1/users/**
+
+        - id: product-service-route
+          uri: http://localhost:8012
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2   # Restricts to 10 requests per second steady-state
+                redis-rate-limiter.burstCapacity: 3   # Allows a maximum spike of 20 requests at once
+                redis-rate-limiter.requestedTokens: 1  # Each request costs 1 token
+                key-resolver: "#{@userIpKeyResolver}"  # References our custom bean below
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+
+  data:
+    redis:
+      # Kubernetes internal DNS to your Redis cluster/standalone service
+      # host: redis-master.default.svc.cluster.local
+      host: localhost # - local development 
+      port: 6379
+      # password: ${REDIS_PASSWORD} # Configure if using auth
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}:${random.value}
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
