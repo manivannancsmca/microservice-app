@@ -15,66 +15,57 @@ spring:
           deny-empty-key: true
           empty-key-status-code: 429
       routes:
-        # 1. User Service Route (No Rate Limiting applied)
+        # 1. User Service Route
         - id: user-service-route
           uri: ${USER_SERVICE_URI:http://localhost:8011}
           predicates:
             - Path=/api/v1/users/**
           filters:
-            # 1. Block abusive traffic/spikes at the edge
-            - name: DynamicRateLimiter          # Matches your custom filter factory prefix
+            - name: DynamicRateLimiter
               args:
                 routeId: user-service-route
 
-            # 2. Resilient retry engine for downstream transient faults
             - name: Retry
               args:
                 retries: 3
-                # Retry on typical microservice failure codes
                 statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
-                # Explicitly retry on low-level network drops and connection timeouts
                 exceptions: 
                   - java.io.IOException
                   - java.net.ConnectException
                   - io.netty.channel.ConnectTimeoutException
-                # Only retry safe, idempotent HTTP methods
                 methods: GET, HEAD, OPTIONS
                 backoff:
                   firstBackoff: 1000ms
                   maxBackoff: 2000ms
                   factor: 2
-                  basedOnPreviousValue: true # Adds random variance (jitter) to the retry curve
+                  # REMOVED: basedOnPreviousValue: true to prevent retry tracking state issues
 
-        # 2. Product Service Route (Dynamic Rate Limiting applied)
+        # 2. Product Service Route
         - id: product-service-route
-          uri: ${PRODUCT_SERVICE_URI:http://localhost:80120}
+          uri: ${PRODUCT_SERVICE_URI:http://localhost:8012}
           predicates:
             - Path=/api/v1/products/**
           filters:
-            # 1. Block abusive traffic/spikes at the edge
-            - name: DynamicRateLimiter          # Matches your custom filter factory prefix
+            - name: DynamicRateLimiter
               args:
                 routeId: product-service-route
 
-            # 2. Resilient retry engine for downstream transient faults
             - name: Retry
               args:
                 retries: 3
-                series: SERVER_ERROR
-                # Retry on typical microservice failure codes
-                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
-                # Explicitly retry on low-level network drops and connection timeouts
+                # FIXED: Removed 'series: SERVER_ERROR' to prevent condition masking. 
+                # Explicitly list all statuses (both 4xx and 5xx) right here.
+                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, NOT_FOUND
                 exceptions: 
                   - java.io.IOException
                   - java.net.ConnectException
                   - io.netty.channel.ConnectTimeoutException
-                # Only retry safe, idempotent HTTP methods
                 methods: GET, HEAD
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 200ms
                   factor: 2
-                  basedOnPreviousValue: true # Adds random variance (jitter) to the retry curve
+                  # REMOVED: basedOnPreviousValue: true
 
 
   data:
