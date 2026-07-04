@@ -72,7 +72,7 @@ spring:
                 methods: GET, HEAD
                 backoff:
                   firstBackoff: 100ms
-                  maxBackoff: 1000ms
+                  maxBackoff: 200ms
                   factor: 2
                   basedOnPreviousValue: true # Adds random variance (jitter) to the retry curve
 
