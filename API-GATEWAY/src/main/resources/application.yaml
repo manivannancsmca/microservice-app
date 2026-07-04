@@ -20,16 +20,61 @@ spring:
           uri: ${USER_SERVICE_URI:http://localhost:8011}
           predicates:
             - Path=/api/v1/users/**
+          filters:
+            # 1. Block abusive traffic/spikes at the edge
+            - name: DynamicRateLimiter          # Matches your custom filter factory prefix
+              args:
+                routeId: user-service-route
+
+            # 2. Resilient retry engine for downstream transient faults
+            - name: Retry
+              args:
+                retries: 3
+                # Retry on typical microservice failure codes
+                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
+                # Explicitly retry on low-level network drops and connection timeouts
+                exceptions: 
+                  - java.io.IOException
+                  - java.net.ConnectException
+                  - io.netty.channel.ConnectTimeoutException
+                # Only retry safe, idempotent HTTP methods
+                methods: GET, HEAD, OPTIONS
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 2000ms
+                  factor: 2
+                  basedOnPreviousValue: true # Adds random variance (jitter) to the retry curve
 
         # 2. Product Service Route (Dynamic Rate Limiting applied)
         - id: product-service-route
-          uri: ${PRODUCT_SERVICE_URI:http://localhost:8012}
+          uri: ${PRODUCT_SERVICE_URI:http://localhost:80120}
           predicates:
             - Path=/api/v1/products/**
           filters:
+            # 1. Block abusive traffic/spikes at the edge
             - name: DynamicRateLimiter          # Matches your custom filter factory prefix
               args:
                 routeId: product-service-route
+
+            # 2. Resilient retry engine for downstream transient faults
+            - name: Retry
+              args:
+                retries: 3
+                series: SERVER_ERROR
+                # Retry on typical microservice failure codes
+                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
+                # Explicitly retry on low-level network drops and connection timeouts
+                exceptions: 
+                  - java.io.IOException
+                  - java.net.ConnectException
+                  - io.netty.channel.ConnectTimeoutException
+                # Only retry safe, idempotent HTTP methods
+                methods: GET, HEAD
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 1000ms
+                  factor: 2
+                  basedOnPreviousValue: true # Adds random variance (jitter) to the retry curve
 
 
   data:
@@ -67,4 +112,5 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
+    '[org.springframework.cloud.gateway]': DEBUG
+    '[org.springframework.cloud.gateway.filter.factory.RetryGatewayFilterFactory]': TRACE
