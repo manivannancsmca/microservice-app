@@ -28,17 +28,26 @@ spring:
             - name: Retry
               args:
                 retries: 3
-                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
-                exceptions: 
+                # >>> CRITICAL FIX: explicitly disable the default SERVER_ERROR series
+                series: []
+                statuses:
+                  - INTERNAL_SERVER_ERROR
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                exceptions:
                   - java.io.IOException
                   - java.net.ConnectException
                   - io.netty.channel.ConnectTimeoutException
-                methods: GET, HEAD, OPTIONS
+                methods:
+                  - GET
+                  - HEAD
+                  - OPTIONS
                 backoff:
                   firstBackoff: 1000ms
                   maxBackoff: 2000ms
                   factor: 2
-                  # REMOVED: basedOnPreviousValue: true to prevent retry tracking state issues
+                  basedOnPreviousValue: true
 
         # 2. Product Service Route
         - id: product-service-route
@@ -53,28 +62,26 @@ spring:
             - name: Retry
               args:
                 retries: 3
-                # FIXED: Removed 'series: SERVER_ERROR' to prevent condition masking. 
-                # Explicitly list all statuses (both 4xx and 5xx) right here.
-                statuses: INTERNAL_SERVER_ERROR, BAD_GATEWAY, SERVICE_UNAVAILABLE, NOT_FOUND
-                exceptions: 
-                  - java.io.IOException
-                  - java.net.ConnectException
-                  - io.netty.channel.ConnectTimeoutException
-                methods: GET, HEAD
+                # >>> CRITICAL FIX: explicitly disable the default SERVER_ERROR series
+                series: []
+                statuses:
+                  - INTERNAL_SERVER_ERROR
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                # NOT_FOUND removed — retrying 404 is pointless
+                methods:
+                  - GET
+                  - HEAD
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 200ms
                   factor: 2
-                  # REMOVED: basedOnPreviousValue: true
-
+                  basedOnPreviousValue: true
 
   data:
     redis:
-      # Kubernetes internal DNS to your Redis cluster/standalone service
-      # host: redis-master.default.svc.cluster.local
-      host: localhost # - local development 
+      host: localhost
       port: 6379
-      # password: ${REDIS_PASSWORD} # Configure if using auth
       lettuce:
         pool:
           max-active: 8
@@ -90,7 +97,6 @@ eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}:${random.value}
-
 
 management:
   endpoints:
