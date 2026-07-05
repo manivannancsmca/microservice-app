@@ -1,0 +1,29 @@
+{
+  "type": "record",
+  "namespace": "com.common.avro.schemas",
+  "name": "OrderPlacedEvent",
+  "doc": "Event published when an order is placed.",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "long"
+    },
+    {
+      "name": "productId",
+      "type": "long"
+    },
+    {
+      "name": "userId",
+      "type": "long"
+    },
+    {
+      "name": "quantity",
+      "type": "int"
+    },
+    {
+      "name": "totalAmount",
+      "type": "long",
+      "doc": "Amount in the smallest currency unit (paise/cents)"
+    }
+  ]
+}

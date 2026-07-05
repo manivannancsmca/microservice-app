@@ -1,0 +1,5 @@
+package com.order_service.enums;
+
+public enum OrderStatus {
+    PENDING, COMPLETED, CANCELLATION_REQUESTED, CANCELLED, FAILED, SHIPPED, CONFIRMED, PROCESSING, DELIVERED
+}

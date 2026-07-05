@@ -1,0 +1,23 @@
+{
+  "type": "record",
+  "name": "InventoryAllocatedEvent",
+  "namespace": "com.common.avro.schemas",
+  "doc": "Schema for when inventory is successfully reserved for an order",
+  "fields": [
+    { "name": "eventId", "type": "string" },
+    { "name": "orderId", "type": "string" },
+    { "name": "allocatedItems", "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "AllocatedItem",
+          "fields": [
+            { "name": "sku", "type": "string" },
+            { "name": "quantity", "type": "int" }
+          ]
+        }
+      }
+    },
+    { "name": "allocatedAt", "type": "long" }
+  ]
+}

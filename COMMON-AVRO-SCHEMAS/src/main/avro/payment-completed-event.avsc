@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "PaymentCompletedEvent",
+  "namespace": "com.common.avro.schemas",
+  "doc": "Schema for when payment processing succeeds",
+  "fields": [
+    { "name": "paymentId", "type": "string" },
+    { "name": "orderId", "type": "string" },
+    { "name": "amountPaid", "type": "double" },
+    { "name": "paymentStatus", "type": "string" },
+    { "name": "completedAt", "type": "long" }
+  ]
+}
