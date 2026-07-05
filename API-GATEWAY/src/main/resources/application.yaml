@@ -20,17 +20,24 @@ spring:
       routes:
         # 1. User Service Route
         - id: user-service-route
-          uri: lb://user-service #${USER_SERVICE_URI:http://localhost:8011}
+          uri: lb://user-service
           predicates:
             - Path=/api/v1/users/**
           filters:
-            # FIX: CircuitBreaker placed first so local forwards don't re-trigger retries
+            # 1. BULKHEAD FIRST: Protect gateway threads/resources immediately
+            - name: Bulkhead
+              args:
+                name: userServiceBulkhead
+                # Optional: fallbackUri if bulkhead is full (sharing your service-unavailable endpoint)
+                fallbackUri: forward:/fallback/service-unavailable
+
+            # 2. CIRCUIT BREAKER SECOND: Tracks failure/success ratios
             - name: CircuitBreaker
               args:
                 name: userServiceCircuitBreaker
                 fallbackUri: forward:/fallback/service-unavailable
 
-            # 2. Retry executes inside the circuit, protecting the network loop
+            # 3. RETRY THIRD: Handles internal transient drops
             - name: Retry
               args:
                 retries: 3
@@ -51,18 +58,24 @@ spring:
                   maxBackoff: 2000ms
                   factor: 2
 
-            # 3. Custom Rate Limiter
+            # 4. RATE LIMITER LAST
             - name: DynamicRateLimiter
               args:
                 routeId: user-service-route
 
         # 2. Product Service Route
         - id: product-service-route
-          uri: lb://product-service #${PRODUCT_SERVICE_URI:http://localhost:8012}
+          uri: lb://product-service
           predicates:
             - Path=/api/v1/products/**
           filters:
-            # FIX: CircuitBreaker placed first
+            # 1. BULKHEAD FIRST
+            - name: Bulkhead
+              args:
+                name: productServiceBulkhead
+                fallbackUri: forward:/fallback/service-unavailable
+
+            # 2. CIRCUIT BREAKER
             - name: CircuitBreaker
               args:
                 name: productServiceCircuitBreaker
@@ -114,35 +127,47 @@ management:
         include: "*"
   endpoint:
     health:
-      # FIX 1: Change from 'always' to 'when_authorized' or 'never'
-      # This stops Actuator from executing reactive components during background sweeps
       show-details: when_authorized
   health:
-    # FIX 2: Explicitly tell Actuator health engine not to poll the circuit breaker states automatically
     circuitbreakers:
       enabled: false
 
 logging:
   level:
     '[org.springframework.cloud.gateway]': DEBUG
-    '[org.springframework.cloud.gateway.filter.factory.RetryGatewayFilterFactory]': TRACE
     '[io.github.resilience4j.circuitbreaker]': DEBUG
-    '[org.springframework.web.server.adapter.HttpWebHandlerAdapter]': TRACE
+    '[io.github.resilience4j.bulkhead]': DEBUG
 
 # ==========================================
-# RESILIENCE4J CIRCUIT BREAKER CONFIGURATION
+# RESILIENCE4J PATTERNS CONFIGURATION
 # ==========================================
 resilience4j:
+  # --- NEW: Bulkhead Limits Configuration ---
+  bulkhead:
+    configs:
+      default:
+        # Max concurrent requests allowed down this route pipeline
+        maxConcurrentCalls: 20
+        # If the bulkhead is saturated, how long a thread can wait in queue before being rejected
+        maxWaitDuration: 20ms
+    instances:
+      userServiceBulkhead:
+        baseConfig: default
+        maxConcurrentCalls: 50 # Giving user service a larger pool size
+      productServiceBulkhead:
+        baseConfig: default
+        maxConcurrentCalls: 20
+
   circuitbreaker:
     configs:
       default:
-        slidingWindowSize: 10 # Number of calls evaluated to calculate the failure rate        
-        minimumNumberOfCalls: 5 # Wait to evaluate until at least 5 calls have been made        
-        failureRateThreshold: 50 # If 50% or more of requests fail, trip the circuit breaker OPEN
-        waitDurationInOpenState: 10s # How long to stay OPEN (blocking traffic) before trying half-open
-        permittedNumberOfCallsInHalfOpenState: 3 # Number of test requests allowed in HALF_OPEN state to see if the service recovered
-        automaticTransitionFromOpenToHalfOpenEnabled: true # Automatically transition from OPEN to HALF_OPEN when waitDuration is over
-        # Record exceptions as failures
+        registerHealthIndicator: false
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
         recordExceptions:
           - java.io.IOException
           - java.net.ConnectException
@@ -155,10 +180,8 @@ resilience4j:
       productServiceCircuitBreaker:
         baseConfig: default
 
-  # TimeLimiter is required by Spring Cloud Gateway Circuit Breaker
   timelimiter:
     configs:
       default:
-        # If a downstream service takes longer than 3 seconds, mark it as a failure
         timeoutDuration: 3s
         cancelRunningFuture: true
