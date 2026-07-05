@@ -6,6 +6,9 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      route-definition-locator:
+        cache:
+          enabled: true
       discovery:
         locator:
           enabled: false
@@ -17,19 +20,22 @@ spring:
       routes:
         # 1. User Service Route
         - id: user-service-route
-          uri: ${USER_SERVICE_URI:http://localhost:8011}
+          uri: lb://user-service #${USER_SERVICE_URI:http://localhost:8011}
           predicates:
             - Path=/api/v1/users/**
           filters:
-            - name: DynamicRateLimiter
+            # FIX: CircuitBreaker placed first so local forwards don't re-trigger retries
+            - name: CircuitBreaker
               args:
-                routeId: user-service-route
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
 
+            # 2. Retry executes inside the circuit, protecting the network loop
             - name: Retry
               args:
                 retries: 3
-                # >>> CRITICAL FIX: explicitly disable the default SERVER_ERROR series
-                series: []
+                cacheBody: true
+                series: [] 
                 statuses:
                   - INTERNAL_SERVER_ERROR
                   - BAD_GATEWAY
@@ -39,44 +45,47 @@ spring:
                   - java.io.IOException
                   - java.net.ConnectException
                   - io.netty.channel.ConnectTimeoutException
-                methods:
-                  - GET
-                  - HEAD
-                  - OPTIONS
+                methods: GET, HEAD, OPTIONS
                 backoff:
                   firstBackoff: 1000ms
                   maxBackoff: 2000ms
                   factor: 2
-                  basedOnPreviousValue: true
+
+            # 3. Custom Rate Limiter
+            - name: DynamicRateLimiter
+              args:
+                routeId: user-service-route
 
         # 2. Product Service Route
         - id: product-service-route
-          uri: ${PRODUCT_SERVICE_URI:http://localhost:8012}
+          uri: lb://product-service #${PRODUCT_SERVICE_URI:http://localhost:8012}
           predicates:
             - Path=/api/v1/products/**
           filters:
-            - name: DynamicRateLimiter
+            # FIX: CircuitBreaker placed first
+            - name: CircuitBreaker
               args:
-                routeId: product-service-route
+                name: productServiceCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
 
             - name: Retry
               args:
-                retries: 3
-                # >>> CRITICAL FIX: explicitly disable the default SERVER_ERROR series
+                retries: 1
+                cacheBody: true
                 series: []
                 statuses:
                   - INTERNAL_SERVER_ERROR
                   - BAD_GATEWAY
                   - SERVICE_UNAVAILABLE
-                # NOT_FOUND removed — retrying 404 is pointless
-                methods:
-                  - GET
-                  - HEAD
+                methods: GET, HEAD
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 200ms
                   factor: 2
-                  basedOnPreviousValue: true
+
+            - name: DynamicRateLimiter
+              args:
+                routeId: product-service-route
 
   data:
     redis:
@@ -105,9 +114,51 @@ management:
         include: "*"
   endpoint:
     health:
-      show-details: always
+      # FIX 1: Change from 'always' to 'when_authorized' or 'never'
+      # This stops Actuator from executing reactive components during background sweeps
+      show-details: when_authorized
+  health:
+    # FIX 2: Explicitly tell Actuator health engine not to poll the circuit breaker states automatically
+    circuitbreakers:
+      enabled: false
 
 logging:
   level:
     '[org.springframework.cloud.gateway]': DEBUG
     '[org.springframework.cloud.gateway.filter.factory.RetryGatewayFilterFactory]': TRACE
+    '[io.github.resilience4j.circuitbreaker]': DEBUG
+    '[org.springframework.web.server.adapter.HttpWebHandlerAdapter]': TRACE
+
+# ==========================================
+# RESILIENCE4J CIRCUIT BREAKER CONFIGURATION
+# ==========================================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10 # Number of calls evaluated to calculate the failure rate        
+        minimumNumberOfCalls: 5 # Wait to evaluate until at least 5 calls have been made        
+        failureRateThreshold: 50 # If 50% or more of requests fail, trip the circuit breaker OPEN
+        waitDurationInOpenState: 10s # How long to stay OPEN (blocking traffic) before trying half-open
+        permittedNumberOfCallsInHalfOpenState: 3 # Number of test requests allowed in HALF_OPEN state to see if the service recovered
+        automaticTransitionFromOpenToHalfOpenEnabled: true # Automatically transition from OPEN to HALF_OPEN when waitDuration is over
+        # Record exceptions as failures
+        recordExceptions:
+          - java.io.IOException
+          - java.net.ConnectException
+          - io.netty.channel.ConnectTimeoutException
+          - org.springframework.web.server.ResponseStatusException
+          - java.util.concurrent.TimeoutException
+    instances:
+      userServiceCircuitBreaker:
+        baseConfig: default
+      productServiceCircuitBreaker:
+        baseConfig: default
+
+  # TimeLimiter is required by Spring Cloud Gateway Circuit Breaker
+  timelimiter:
+    configs:
+      default:
+        # If a downstream service takes longer than 3 seconds, mark it as a failure
+        timeoutDuration: 3s
+        cancelRunningFuture: true

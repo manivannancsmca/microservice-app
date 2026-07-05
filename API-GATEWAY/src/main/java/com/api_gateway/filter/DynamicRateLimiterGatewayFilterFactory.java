@@ -24,33 +24,27 @@ public class DynamicRateLimiterGatewayFilterFactory
 
     @Override
     public GatewayFilter apply(Config config) {
-        // Print statement to confirm the gateway factory is mapping properly at start
-        System.out.println(">>> DynamicRateLimiter applied for route ID: " + config.getRouteId());
+        // Removed the startup/refresh print statement from here to stop the background logging noise.
 
         return (exchange, chain) -> keyResolver.resolve(exchange).flatMap(key -> {
 
-            // Print statement when a request successfully passes through the filter
-            // execution block
-            System.out.println(">>> Processing Rate Limiter filter for Key: " + key);
+            // This only runs when an actual HTTP request hits your API Gateway
+            System.out.println(">>> Processing Rate Limiter filter for Key: " + key + " on route: " + config.getRouteId());
 
-            // FIX: Safely parse and lock the tier string into a final variable immediately
+            // Safely parse and lock the tier string into a final variable immediately
             String rawTier = exchange.getRequest().getHeaders().getFirst("X-User-Tier");
             final String tier = (rawTier == null || rawTier.isBlank()) ? "NORMAL" : rawTier.toUpperCase();
 
             String baseRouteId = config.getRouteId() != null ? config.getRouteId() : "default_route";
             String dynamicRouteKey = baseRouteId + "-" + tier;
 
-            // 'tier' is now final, so the lambda compiler is happy
+            // Compute rate limiting rules dynamically based on tier
             redisRateLimiter.getConfig().computeIfAbsent(dynamicRouteKey, k -> {
                 RedisRateLimiter.Config rateConfig = new RedisRateLimiter.Config();
                 if ("PREMIUM".equals(tier)) {
-                    // Example: 30 requests per minute
-                    // 60 seconds / 30 requests = 1 token replenished every 2 seconds
                     rateConfig.setReplenishRate(1);
                     rateConfig.setBurstCapacity(30);
                 } else {
-                    // STANDARD: 10 requests per minute
-                    // 60 seconds / 10 requests = 1 token replenished every 6 seconds
                     rateConfig.setReplenishRate(1);
                     rateConfig.setBurstCapacity(10);
                 }
@@ -59,9 +53,9 @@ public class DynamicRateLimiterGatewayFilterFactory
             });
 
             return redisRateLimiter.isAllowed(dynamicRouteKey, key).flatMap(response -> {
-                System.out.println(">>> Redis Rate Limit Check - Allowed: " + response.isAllowed());
+                System.out.println(">>> Redis Rate Limit Check for key [" + key + "] - Allowed: " + response.isAllowed());
 
-                // Always inject tracking metadata headers into response stream
+                // Inject tracking metadata headers into response stream
                 response.getHeaders().forEach((headerName, headerValue) -> {
                     exchange.getResponse().getHeaders().add(headerName, headerValue);
                 });
@@ -70,8 +64,7 @@ public class DynamicRateLimiterGatewayFilterFactory
                     return chain.filter(exchange);
                 }
 
-                // FIX: Set the status code AND explicitly return the completion pipeline signal
-                // to prevent downstream routing filters from running!
+                // Explicitly return completion pipeline signal on rate limit exhaustion
                 exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
                 return exchange.getResponse().setComplete();
             });
