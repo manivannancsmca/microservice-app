@@ -12,9 +12,9 @@ Content-Type: {{contentType}}
 Accept: application/json
 
 {
-  "name": "Notebook",
-  "description": "Plain note book for students",
-  "price": 530.00,
+  "name": "test one",
+  "description": "test one",
+  "price": 200.00,
   "stock": 5
 }
 

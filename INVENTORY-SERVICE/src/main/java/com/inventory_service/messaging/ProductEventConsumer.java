@@ -1,5 +1,6 @@
 package com.inventory_service.messaging;
 
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -58,7 +59,7 @@ public class ProductEventConsumer {
 
         // 4. Record event execution history to guarantee exactly-once processing behavior
         ProcessedMessage message = ProcessedMessage.builder().messageId(eventId).consumerGroup(CONSUMER_GROUP).build();
-        messageRepository.save(message);log.info("Asynchronously initialized default inventory allocation to 0 for Product SKU: {}", productId);
+        messageRepository.save(message);
         log.info("Asynchronously initialized default inventory allocation to 0 for Product SKU: {}", productId);
     }
 }

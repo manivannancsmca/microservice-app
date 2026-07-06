@@ -1,7 +1,7 @@
 
 @host = http://localhost:8014
-@baseUrl = {{host}}/api/v1/inventory
-
+@baseUrl = {{host}}/api/v1/inventorys
+@contentType = application/json
 
 ### ============================================================================
 ### Get Product By Id
@@ -9,3 +9,16 @@
 
 GET {{baseUrl}}/product/1
 Accept: application/json
+
+### ============================================================================
+### Update stock by Product Id
+### ============================================================================
+
+POST {{baseUrl}}/stock
+Content-Type: {{contentType}}
+Accept: application/json
+
+{
+  "productId": 104,
+  "availableQuantity": 210
+}
