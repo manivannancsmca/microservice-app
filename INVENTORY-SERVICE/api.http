@@ -1,0 +1,11 @@
+
+@host = http://localhost:8014
+@baseUrl = {{host}}/api/v1/inventory
+
+
+### ============================================================================
+### Get Product By Id
+### ============================================================================
+
+GET {{baseUrl}}/product/1
+Accept: application/json
