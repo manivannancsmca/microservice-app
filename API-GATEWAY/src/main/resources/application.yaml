@@ -137,6 +137,43 @@ spring:
               args:
                 routeId: order-service-route
 
+        # 4. Inventory Service Route
+        - id: inventory-service-route
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/v1/inventorys/**
+          filters:
+            # 1. BULKHEAD FIRST
+            - name: Bulkhead
+              args:
+                name: inventoryServiceBulkhead
+                fallbackUri: forward:/fallback/service-unavailable
+
+            # 2. CIRCUIT BREAKER
+            - name: CircuitBreaker
+              args:
+                name: inventoryServiceCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+            - name: Retry
+              args:
+                retries: 1
+                cacheBody: true
+                series: []
+                statuses:
+                  - INTERNAL_SERVER_ERROR
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                methods: GET, HEAD
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 200ms
+                  factor: 2
+
+            - name: DynamicRateLimiter
+              args:
+                routeId: inventory-service-route
+
   data:
     redis:
       host: localhost
@@ -197,6 +234,9 @@ resilience4j:
       orderServiceBulkhead:
         baseConfig: default
         maxConcurrentCalls: 20
+      inventoryServiceBulkhead:
+        baseConfig: default
+        maxConcurrentCalls: 20
 
   circuitbreaker:
     configs:
@@ -220,6 +260,8 @@ resilience4j:
       productServiceCircuitBreaker:
         baseConfig: default
       orderServiceCircuitBreaker:
+        baseConfig: default
+      inventoryServiceCircuitBreaker:
         baseConfig: default
 
   timelimiter:
