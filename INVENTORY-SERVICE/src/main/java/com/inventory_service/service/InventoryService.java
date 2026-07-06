@@ -71,13 +71,20 @@ public class InventoryService {
             inventoryRepository.save(inventory);
 
             // Document message execution state
-            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId).consumerGroup(CONSUMER_GROUP).build();
+            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId)
+                    .consumerGroup(CONSUMER_GROUP).build();
             messageRepository.save(processedMessage);
 
             // Emit success event back to Kafka loop
             eventProducer.sendInventoryAllocated(orderId, productId, quantity, totalPrice);
 
         } catch (Exception ex) {
+            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId)
+                    .consumerGroup(CONSUMER_GROUP).build();
+            messageRepository.save(processedMessage);
+
+            // Emit Failure Event to drive Saga compensation
+            eventProducer.sendInventoryAllocationFailed(orderId, productId, quantity);
         }
 
     }

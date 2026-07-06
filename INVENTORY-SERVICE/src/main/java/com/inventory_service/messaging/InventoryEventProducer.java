@@ -18,16 +18,33 @@ public class InventoryEventProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void sendInventoryAllocated(long orderId, long productId, int quantity, BigDecimal totalPrice) {
-       
+
+        byte[] unscaledPrice = totalPrice.unscaledValue().toByteArray();
+
         InventoryAllocatedEvent event = InventoryAllocatedEvent.newBuilder()
                 .setEventId(UUID.randomUUID().toString())
                 .setOrderId(orderId)
                 .setProductId(productId)
                 .setQuantity(quantity)
-                .setTotalPrice(totalPrice.longValue())
+                .setTotalPrice(ByteBuffer.wrap(unscaledPrice))
                 .setStatus("SUCCESS")
                 .build();
+
+        kafkaTemplate.send("inventory-allocated-events", String.valueOf(orderId), event);
     }
 
+    public void sendInventoryAllocationFailed(long orderId, long productId, int quantity) {
+
+        InventoryAllocatedEvent event = InventoryAllocatedEvent.newBuilder()
+                .setEventId(UUID.randomUUID().toString())
+                .setOrderId(orderId)
+                .setProductId(productId)
+                .setQuantity(quantity)
+                .setTotalPrice(ByteBuffer.wrap(new byte[0]))
+                .setStatus("SUCCESS")
+                .build();
+
+        kafkaTemplate.send("inventory-allocated-events", String.valueOf(orderId), event);
+    }
 
 }
