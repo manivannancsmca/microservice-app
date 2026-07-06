@@ -94,11 +94,17 @@
 					</schemaRegistryUrls>
 					<subjects>
 						<order-placed-topic-value>
-							${project.basedir}/src/main/avro/order-placed-event.avsc</order-placed-topic-value>
+							${project.basedir}/src/main/avro/order-placed-event.avsc
+						</order-placed-topic-value>
 						<inventory-allocated-topic-value>
-							${project.basedir}/src/main/avro/inventory-allocated-event.avsc</inventory-allocated-topic-value>
+							${project.basedir}/src/main/avro/inventory-allocated-event.avsc
+						</inventory-allocated-topic-value>
 						<payment-completed-topic-value>
-							${project.basedir}/src/main/avro/payment-completed-event.avsc</payment-completed-topic-value>
+							${project.basedir}/src/main/avro/payment-completed-event.avsc
+						</payment-completed-topic-value>
+						<product-created-topic-value>
+							${project.basedir}/src/main/avro/product-created-event.avsc
+						</product-created-topic-value>
 					</subjects>
 					<compatibilityLevel>BACKWARD</compatibilityLevel>
 				</configuration>
