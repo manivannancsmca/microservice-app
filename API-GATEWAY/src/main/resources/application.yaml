@@ -100,6 +100,43 @@ spring:
               args:
                 routeId: product-service-route
 
+        # 3. Order Service Route
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            # 1. BULKHEAD FIRST
+            - name: Bulkhead
+              args:
+                name: orderServiceBulkhead
+                fallbackUri: forward:/fallback/service-unavailable
+
+            # 2. CIRCUIT BREAKER
+            - name: CircuitBreaker
+              args:
+                name: orderServiceCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+            - name: Retry
+              args:
+                retries: 1
+                cacheBody: true
+                series: []
+                statuses:
+                  - INTERNAL_SERVER_ERROR
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                methods: GET, HEAD
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 200ms
+                  factor: 2
+
+            - name: DynamicRateLimiter
+              args:
+                routeId: order-service-route
+
   data:
     redis:
       host: localhost
@@ -157,6 +194,9 @@ resilience4j:
       productServiceBulkhead:
         baseConfig: default
         maxConcurrentCalls: 20
+      orderServiceBulkhead:
+        baseConfig: default
+        maxConcurrentCalls: 20
 
   circuitbreaker:
     configs:
@@ -178,6 +218,8 @@ resilience4j:
       userServiceCircuitBreaker:
         baseConfig: default
       productServiceCircuitBreaker:
+        baseConfig: default
+      orderServiceCircuitBreaker:
         baseConfig: default
 
   timelimiter:
