@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "ProductCreatedEvent",
+  "namespace": "com.common.avro.schemas",
+  "doc": "Schema for when product is successfully created for an inventory stock update",
+  "fields": [
+    { "name": "eventId", "type": "string" },
+    { "name": "productId", "type": "long" }
+    { "name": "price", "type": { "type": "bytes", "logicalType": "decimal", "precision": 10, "scale": 2 } }
+  ]
+}
