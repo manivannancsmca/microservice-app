@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.order_service.dto.StandardResponse;
 
+import feign.FeignException;
+
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -42,5 +44,19 @@ public class GlobalExceptionHandler {
                 .errors(errors)
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(FeignException.NotFound.class)
+    public ResponseEntity<StandardResponse<Void>> handleFeignNotFound(FeignException.NotFound ex) {
+
+        StandardResponse<Void> response = StandardResponse.<Void>builder()
+                .timestamp(LocalDateTime.now().toString())
+                .status(HttpStatus.NOT_FOUND.value())
+                .success(false)
+                .message("Requested resource was not found in downstream service.")
+                .errors(Collections.singletonList(ex.contentUTF8()))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 }

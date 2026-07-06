@@ -15,28 +15,32 @@ import com.order_service.enums.OrderStatus;
 
 @Entity
 @Table(name = "orders")
-@Getter                 // Safe: Only generates getters
-@Setter                 // Safe: Only generates setters
-@NoArgsConstructor      // Required by JPA
-@AllArgsConstructor     // Useful for builders/testing
+@Getter // Safe: Only generates getters
+@Setter // Safe: Only generates setters
+@NoArgsConstructor // Required by JPA
+@AllArgsConstructor // Useful for builders/testing
 @Builder
 public class Order extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long userId;
     private Long productId;
     private int quantity;
     private BigDecimal totalPrice;
-    
+
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Order user = (Order) o;
         return Objects.equals(id, user.id);
     }
@@ -45,5 +49,5 @@ public class Order extends BaseEntity implements Serializable {
     public int hashCode() {
         return Objects.hash(id);
     }
-    
+
 }

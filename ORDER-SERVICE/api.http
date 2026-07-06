@@ -106,9 +106,9 @@ Content-Type: {{contentType}}
 Accept: application/json
 
 {
-  "userId": 101,
-  "productId": 1001,
-  "quantity": 2
+  "userId": 102,
+  "productId": 10,
+  "quantity": 5
 }
 
 ###
@@ -156,7 +156,7 @@ Accept: application/json
 ### Search Orders by User
 ### ============================================================================
 
-GET {{baseUrl}}/users/104
+GET {{baseUrl}}/users/102
 Accept: application/json
 
 ###
