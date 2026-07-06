@@ -27,14 +27,37 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
+        '[format_sql]': 'true'
 
   data:
     redis:
       host: localhost
       port: 6379
 
-  
+  flyway:
+    enabled: true # Enables Flyway migrations on application startup
+    baseline-on-migrate: true # Prevents accidental execution against an empty database without a baseline
+    locations:
+      - classpath:db/migration
+      - classpath:db/testdata
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: http://localhost:8081
+
+    consumer:
+      group-id: product-saga-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: http://localhost:8081
+        specific.avro.reader: true
+
 # ===================================================================
 # FIXED OBSERVABILITY & TRACING CONFIGURATION
 # ===================================================================
