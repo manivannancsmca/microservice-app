@@ -1,0 +1,28 @@
+@host = http://localhost:8012
+@baseUrl = {{host}}/api/v1/products
+
+@contentType = application/json
+
+### ============================================================================
+### Create Product
+### ============================================================================
+
+POST {{baseUrl}}
+Content-Type: {{contentType}}
+Accept: application/json
+
+{
+  "name": "Notebook",
+  "description": "Plain note book for students",
+  "price": 530.00,
+  "stock": 5
+}
+
+### ============================================================================
+### Get Product By Id
+### ============================================================================
+
+
+
+GET {{baseUrl}}/1
+Accept: application/json
