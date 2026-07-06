@@ -2,6 +2,9 @@ package com.inventory_service.entity;
 
 import java.time.Instant;
 
+import org.springframework.data.annotation.CreatedDate;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,7 +30,13 @@ public class ProcessedMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "messageId", nullable = false)
     private String messageId;
+
+    @Column(name = "consumerGroup", nullable = false)
     private String consumerGroup;
-    private Instant processedAt = Instant.now();
+
+    @CreatedDate
+    @Column(name = "processedAt", nullable = false, updatable = false)
+    private Instant processedAt;
 }
