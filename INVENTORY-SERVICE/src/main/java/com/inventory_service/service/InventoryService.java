@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.inventory_service.dto.InventoryRequest;
 import com.inventory_service.dto.InventoryResponse;
 import com.inventory_service.entity.Inventory;
+import com.inventory_service.entity.ProcessedMessage;
 import com.inventory_service.exception.InsufficientStockException;
+import com.inventory_service.messaging.InventoryEventProducer;
 import com.inventory_service.repository.InventoryRepository;
 import com.inventory_service.repository.ProcessedMessageRepository;
 
@@ -21,6 +23,7 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ProcessedMessageRepository messageRepository;
     private static final String CONSUMER_GROUP = "inventory-saga-group";
+    private final InventoryEventProducer eventProducer;
 
     @Transactional
     public InventoryResponse updateOrInitializeStock(InventoryRequest request) {
@@ -48,17 +51,33 @@ public class InventoryService {
 
     @Transactional
     public void reserveStock(String eventId, long orderId, long userId, long productId,
-            int quantity, BigDecimal price) {
+            int quantity, BigDecimal totalPrice) {
 
         if (messageRepository.existsByMessageIdAndConsumerGroup(eventId, CONSUMER_GROUP)) {
             return;
         }
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new InsufficientStockException("Product " + productId + " not found in database."));
+        try {
+            Inventory inventory = inventoryRepository.findByProductId(productId)
+                    .orElseThrow(
+                            () -> new InsufficientStockException("Product " + productId + " not found in database."));
 
-        if (inventory.getAvailableQuantity() < quantity) {
-            throw new InsufficientStockException("Insufficient stock for product: " + productId);
+            if (inventory.getAvailableQuantity() < quantity) {
+                throw new InsufficientStockException("Insufficient stock for product: " + productId);
+            }
+
+            inventory.setAvailableQuantity(inventory.getAvailableQuantity() - quantity);
+            inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
+            inventoryRepository.save(inventory);
+
+            // Document message execution state
+            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId).consumerGroup(CONSUMER_GROUP).build();
+            messageRepository.save(processedMessage);
+
+            // Emit success event back to Kafka loop
+            eventProducer.sendInventoryAllocated(orderId, productId, quantity, totalPrice);
+
+        } catch (Exception ex) {
         }
 
     }
