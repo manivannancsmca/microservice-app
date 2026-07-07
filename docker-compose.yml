@@ -7,7 +7,7 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka-broker
     networks:
-      - kafka-net
+      - microservices-network
     ports:
       - "9092:9092"
     environment:
@@ -31,7 +31,7 @@ services:
     image: confluentinc/cp-schema-registry:7.6.0
     container_name: schema-registry
     networks:
-      - kafka-net
+      - microservices-network
     depends_on:
       - broker
     ports:
@@ -46,7 +46,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     networks:
-      - kafka-net
+      - microservices-network
     depends_on:
       - broker
       - schema-registry
@@ -173,6 +173,36 @@ services:
           memory: 512M
     restart: always
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - microservices-network
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - microservices-network
+
 volumes:
   user_db_data:
   product_db_data:
@@ -180,8 +210,9 @@ volumes:
   inventory_db_data:
   payment_db_data:
   redis_data:
+  es_data:
     driver: local
 
 networks:
-  kafka-net:
+  microservices-network:
     driver: bridge
