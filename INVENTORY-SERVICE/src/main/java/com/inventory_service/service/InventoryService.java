@@ -53,7 +53,7 @@ public class InventoryService {
     public void reserveStock(String eventId, long orderId, long userId, long productId,
             int quantity, BigDecimal totalPrice) {
 
-        if (messageRepository.existsByMessageIdAndConsumerGroup(eventId, CONSUMER_GROUP)) {
+        if (messageRepository.existsByMessageIdAndConsumerGroup(String.valueOf(orderId), CONSUMER_GROUP)) {
             return;
         }
 
@@ -71,7 +71,7 @@ public class InventoryService {
             inventoryRepository.save(inventory);
 
             // Document message execution state
-            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId)
+            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(String.valueOf(orderId))
                     .consumerGroup(CONSUMER_GROUP).build();
             messageRepository.save(processedMessage);
 
@@ -79,7 +79,7 @@ public class InventoryService {
             eventProducer.sendInventoryAllocated(orderId, productId, quantity, totalPrice);
 
         } catch (Exception ex) {
-            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(eventId)
+            ProcessedMessage processedMessage = ProcessedMessage.builder().messageId(String.valueOf(orderId))
                     .consumerGroup(CONSUMER_GROUP).build();
             messageRepository.save(processedMessage);
 
