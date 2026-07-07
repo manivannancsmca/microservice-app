@@ -11,3 +11,18 @@ If permanent deletion is enabled:
 ```
 curl -X DELETE "http://localhost:8081/subjects/inventory-allocated-topic-value?permanent=true"
 ```
+
+### MySQL vs Elasticsearch Cheat Sheet
+
+---
+
+| MySQL                            | Elasticsearch                               |
+| -------------------------------- | ------------------------------------------- |
+| `SHOW TABLES;`                   | `GET _cat/indices?v`                        |
+| `SELECT * FROM products;`        | `GET products/_search`                      |
+| `SELECT COUNT(*) FROM products;` | `GET products/_count`                       |
+| `DESCRIBE products;`             | `GET products/_mapping`                     |
+| `SELECT * WHERE id=1;`           | `GET products/_doc/1`                       |
+| `SELECT * WHERE name='iphone';`  | `GET products/_search` with a `match` query |
+| `DROP TABLE products;`           | `DELETE products`                           |
+| `CREATE TABLE products...`       | `PUT products`                              |
