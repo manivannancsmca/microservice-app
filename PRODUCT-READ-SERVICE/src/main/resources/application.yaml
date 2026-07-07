@@ -1,0 +1,3 @@
+spring:
+  application:
+    name: PRODUCT-READ-SERVICE
