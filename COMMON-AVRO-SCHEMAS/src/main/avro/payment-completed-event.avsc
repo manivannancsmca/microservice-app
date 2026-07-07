@@ -4,10 +4,33 @@
   "namespace": "com.common.avro.schemas",
   "doc": "Schema for when payment processing succeeds",
   "fields": [
-    { "name": "paymentId", "type": "string" },
-    { "name": "orderId", "type": "string" },
-    { "name": "amountPaid", "type": "double" },
-    { "name": "paymentStatus", "type": "string" },
-    { "name": "completedAt", "type": "long" }
+    {
+      "name": "paymentId",
+      "type": "long"
+    },
+    {
+      "name": "orderId",
+      "type": "long"
+    },
+    {
+      "name": "amountPaid",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 10,
+        "scale": 2
+      }
+    },
+    {
+      "name": "paymentStatus",
+      "type": "string"
+    },
+    {
+      "name": "completedAt",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    }
   ]
 }

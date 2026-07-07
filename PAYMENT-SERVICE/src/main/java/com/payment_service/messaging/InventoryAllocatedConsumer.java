@@ -26,7 +26,7 @@ public class InventoryAllocatedConsumer {
 
     private final OrderClient orderClient;
 
-    @KafkaListener(topics = "${app.kafka.topics.inventory-allocated}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "inventory-allocated-events", groupId = "payment-saga-group")
     public void consume(ConsumerRecord<String, InventoryAllocatedEvent> record) {
         InventoryAllocatedEvent event = record.value();
         log.info("Received InventoryAllocatedEvent for Order ID: {}", event.getOrderId());

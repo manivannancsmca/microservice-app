@@ -2,9 +2,12 @@ package com.payment_service.service;
 
 import org.apache.kafka.common.errors.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.common.avro.schemas.OrderPlacedEvent;
+import com.common.avro.schemas.PaymentCompletedEvent;
 import com.payment_service.client.InventoryClient;
 import com.payment_service.dto.InventoryResponse;
 import com.payment_service.dto.PaymentRequest;
@@ -14,6 +17,7 @@ import com.payment_service.entity.Payment;
 import com.payment_service.enums.PaymentStatus;
 import com.payment_service.exception.InsufficientStockException;
 import com.payment_service.exception.InvalidPaymentAmountException;
+import com.payment_service.messaging.PaymentProducer;
 import com.payment_service.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -25,70 +29,78 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository;
-    private final InventoryClient inventoryClient;
+        private final PaymentRepository paymentRepository;
+        private final InventoryClient inventoryClient;
+        private final PaymentProducer paymentProducer;
 
-    
-    public PaymentResponse processPayment(PaymentRequest request) {
-        
-        // Step 1: Execute final Feign verification check to Inventory Service
-        ResponseEntity<StandardResponse<InventoryResponse>> response = inventoryClient.checkStock(request.getProductId(), request.getQuantity());
-        
-        InventoryResponse inventoryResponse = response.getBody().getData();
+        public PaymentResponse processPayment(PaymentRequest request) {
 
+                // Step 1: Execute final Feign verification check to Inventory Service
+                ResponseEntity<StandardResponse<InventoryResponse>> response = inventoryClient
+                                .checkStock(request.getProductId(), request.getQuantity());
 
-        if (response == null || !inventoryResponse.isAvailable()) {
-            log.warn("Payment rejected due to insufficient current state allocations for item: {}", request.getProductId());
-            throw new InsufficientStockException("Requested quantity no longer available inside validation state.");
+                InventoryResponse inventoryResponse = response.getBody().getData();
+
+                if (response == null || !inventoryResponse.isAvailable()) {
+                        log.warn("Payment rejected due to insufficient current state allocations for item: {}",
+                                        request.getProductId());
+                        throw new InsufficientStockException(
+                                        "Requested quantity no longer available inside validation state.");
+                }
+
+                // Step 2: Establish base payment record
+                Payment payment = Payment.builder()
+                                .userId(request.getUserId())
+                                .productId(request.getProductId())
+                                .orderId(request.getOrderId())
+                                .quantity(request.getQuantity())
+                                .amount(request.getAmount())
+                                .paymentStatus(request.getStatus()) // Assuming external provider settlement resolves
+                                                                    // cleanly here
+                                .build();
+
+                Payment savedPayment = paymentRepository.save(payment);
+                log.info("Payment entity successfully committed to localized persistence instance. ID: {}",
+                                savedPayment.getId());
+
+                return PaymentResponse.builder()
+                                .paymentId(savedPayment.getId())
+                                .orderId(savedPayment.getOrderId())
+                                .status(savedPayment.getPaymentStatus().name())
+                                .build();
         }
 
-        // Step 2: Establish base payment record
-        Payment payment = Payment.builder()
-                .userId(request.getUserId())
-                .productId(request.getProductId())
-                .orderId(request.getOrderId())
-                .quantity(request.getQuantity())
-                .amount(request.getAmount())
-                .paymentStatus(request.getStatus()) // Assuming external provider settlement resolves cleanly here
-                .build();
+        public PaymentResponse updatePayment(PaymentRequest request) {
 
-        Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment entity successfully committed to localized persistence instance. ID: {}", savedPayment.getId());
+                Payment payment = paymentRepository.findByOrderId(request.getOrderId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Payment not found for orderId: " + request.getOrderId()));
 
-        return PaymentResponse.builder()
-                .paymentId(savedPayment.getId())
-                .orderId(savedPayment.getOrderId())
-                .status(savedPayment.getPaymentStatus().name())
-                .build();
-    }
+                // Validate amount
+                if (payment.getAmount().compareTo(request.getAmount()) != 0) {
+                        payment.setPaymentStatus(PaymentStatus.FAILED);
+                        paymentProducer.paymentFailedEvent(payment);
+                        throw new InvalidPaymentAmountException(
+                                        String.format(
+                                                        "Invalid payment amount. Expected: %s, Received: %s",
+                                                        payment.getAmount(),
+                                                        request.getAmount()));
+                }
+                payment.setPaymentStatus(request.getStatus());
 
-    public PaymentResponse updatePayment(PaymentRequest request) {
+                Payment updatedPayment = paymentRepository.save(payment);
 
-        Payment payment = paymentRepository.findByOrderId(request.getOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Payment not found for orderId: " + request.getOrderId()));
+                paymentProducer.paymentSuccessEvent(updatedPayment);
 
-        // Validate amount
-        if (payment.getAmount().compareTo(request.getAmount()) != 0) {
-            throw new InvalidPaymentAmountException(
-                    String.format(
-                            "Invalid payment amount. Expected: %s, Received: %s",
-                            payment.getAmount(),
-                            request.getAmount()));
+                return PaymentResponse.builder()
+                                .paymentId(updatedPayment.getId())
+                                .userId(updatedPayment.getUserId())
+                                .productId(updatedPayment.getProductId())
+                                .orderId(updatedPayment.getOrderId())
+                                .quantity(updatedPayment.getQuantity())
+                                .amount(updatedPayment.getAmount())
+                                .status(updatedPayment.getPaymentStatus().name())
+                                .build();
         }
-        payment.setPaymentStatus(request.getStatus());
-
-        Payment updatedPayment = paymentRepository.save(payment);
-
-        return PaymentResponse.builder()
-                .paymentId(updatedPayment.getId())
-                .userId(updatedPayment.getUserId())
-                .productId(updatedPayment.getProductId())
-                .orderId(updatedPayment.getOrderId())
-                .quantity(updatedPayment.getQuantity())
-                .amount(updatedPayment.getAmount())
-                .status(updatedPayment.getPaymentStatus().name())
-                .build();
-    }
 
 }

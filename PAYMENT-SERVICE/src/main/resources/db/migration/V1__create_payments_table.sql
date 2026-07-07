@@ -2,9 +2,9 @@
 
 CREATE TABLE payments (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    userId VARCHAR(50) NOT NULL,
-    productId VARCHAR(50) NOT NULL,
-    orderId VARCHAR(50) NOT NULL,
+    userId BIGINT NOT NULL,
+    productId BIGINT NOT NULL,
+    orderId BIGINT NOT NULL,
     quantity INT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     paymentStatus VARCHAR(20) NOT NULL,

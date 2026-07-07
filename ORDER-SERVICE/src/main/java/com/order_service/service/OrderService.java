@@ -2,6 +2,7 @@ package com.order_service.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -114,6 +115,22 @@ public class OrderService {
         }
 
         return orders.map(this::mapToResponse);
+    }
+
+    public void updateOrderStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order records not located with tracking ID: " + orderId));
+
+        if (status.equalsIgnoreCase("SUCCESS")) {
+            order.setOrderStatus(OrderStatus.COMPLETED);
+        } else if (status.equalsIgnoreCase("REJECTED")) {
+            order.setOrderStatus(OrderStatus.CANCELLED);
+        } else {
+            order.setOrderStatus(OrderStatus.CANCELLATION_REQUESTED);
+        }
+
+        orderRepository.save(order);
+
     }
 
     private OrderResponse mapToResponse(Order order) {
