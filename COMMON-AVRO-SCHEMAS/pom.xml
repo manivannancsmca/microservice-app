@@ -105,6 +105,9 @@
 						<product-created-topic-value>
 							${project.basedir}/src/main/avro/product-created-event.avsc
 						</product-created-topic-value>
+						<product-sync-topic-value>
+							${project.basedir}/src/main/avro/product-sync-event.avsc
+						</product-sync-topic-value>
 					</subjects>
 					<compatibilityLevel>BACKWARD</compatibilityLevel>
 				</configuration>

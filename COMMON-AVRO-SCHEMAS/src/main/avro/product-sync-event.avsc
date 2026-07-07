@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "AvroProductSyncEvent",
+  "namespace": "com.common.avro.schemas",
+  "doc": "Event published when an Product is placed.",
+  "fields": [
+    { "name": "productId", "type": "string" },
+    { "name": "action", "type": ["null", "string"], "default": null },
+    { "name": "name", "type": ["null", "string"], "default": null },
+    { "name": "description", "type": ["null", "string"], "default": null },
+    { "name": "price", "type": ["null", "string"], "default": null },
+    { "name": "skucode", "type": ["null", "string"], "default": null }
+  ]
+}
