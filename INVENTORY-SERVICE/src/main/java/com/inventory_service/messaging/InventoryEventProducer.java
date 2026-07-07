@@ -41,7 +41,7 @@ public class InventoryEventProducer {
                 .setProductId(productId)
                 .setQuantity(quantity)
                 .setTotalPrice(ByteBuffer.wrap(new byte[0]))
-                .setStatus("SUCCESS")
+                .setStatus("FAILED")
                 .build();
 
         kafkaTemplate.send("inventory-allocated-events", String.valueOf(orderId), event);
