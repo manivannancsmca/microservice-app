@@ -19,6 +19,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<StandardResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
+        StandardResponse<Void> response = StandardResponse.<Void>builder()
+                .timestamp(LocalDateTime.now().toString())
+                .status(HttpStatus.NOT_FOUND.value())
+                .success(false)
+                .message(ex.getMessage())
+                .errors(Collections.singletonList("Order record reference error"))
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<StandardResponse<Void>> handleNotFound(InsufficientStockException ex) {
         StandardResponse<Void> response = StandardResponse.<Void>builder()

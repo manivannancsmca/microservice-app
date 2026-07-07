@@ -48,4 +48,20 @@ public class InventoryController {
                 .build();
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/verify")
+    ResponseEntity<StandardResponse<InventoryResponse>> checkStock(
+            @RequestParam("productId") Long productId,
+            @RequestParam("quantity") Integer quantity) {
+
+        InventoryResponse data = inventoryService.checkStock(productId, quantity);
+        StandardResponse<InventoryResponse> response = StandardResponse.<InventoryResponse>builder()
+                .timestamp(LocalDateTime.now().toString())
+                .status(HttpStatus.OK.value())
+                .success(true)
+                .message("Inventory data created successfully")
+                .data(data)
+                .build();
+        return ResponseEntity.ok(response);
+    }
 }

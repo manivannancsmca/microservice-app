@@ -10,6 +10,7 @@ import com.inventory_service.dto.InventoryResponse;
 import com.inventory_service.entity.Inventory;
 import com.inventory_service.entity.ProcessedMessage;
 import com.inventory_service.exception.InsufficientStockException;
+import com.inventory_service.exception.ResourceNotFoundException;
 import com.inventory_service.messaging.InventoryEventProducer;
 import com.inventory_service.repository.InventoryRepository;
 import com.inventory_service.repository.ProcessedMessageRepository;
@@ -100,6 +101,21 @@ public class InventoryService {
                         inventory.getAvailableQuantity() > 0))
                 .orElseThrow(() -> new InsufficientStockException(
                         "Product " + productId + " is not registered in the inventory catalog."));
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryResponse checkStock(Long productId, Integer quantity) {
+
+        InventoryResponse response = inventoryRepository.checkStock(productId, quantity)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Inventory not found for productId: " + productId));
+
+        if (!response.isAvailable()) {
+            throw new InsufficientStockException(
+                    "Requested quantity is not available.");
+        }
+
+        return response;
     }
 
 }
