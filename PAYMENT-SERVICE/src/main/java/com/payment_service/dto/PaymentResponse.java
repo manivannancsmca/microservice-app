@@ -12,14 +12,18 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Builder
 public class PaymentResponse {
+
+    private Long paymentId;
     
-    private String userId;
+    private Long userId;
 
-    private String productId;
+    private Long productId;
 
-    private String orderId;
+    private Long orderId;
 
     private Integer quantity;
 
     private BigDecimal amount;
+
+    private String status;
 }

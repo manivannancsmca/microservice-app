@@ -27,13 +27,13 @@ public class Payment extends BaseEntity implements Serializable {
     private Long id;
 
     @Column(name = "userId", nullable = false)
-    private String userId;
+    private Long userId;
 
     @Column(name = "productId", nullable = false)
-    private String productId;
+    private Long productId;
 
     @Column(name = "orderId", nullable = false, unique = true)
-    private String orderId;
+    private Long orderId;
 
     @Column(nullable = false)
     private Integer quantity;

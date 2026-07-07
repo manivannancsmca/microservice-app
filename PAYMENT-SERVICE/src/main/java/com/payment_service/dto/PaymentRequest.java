@@ -11,19 +11,21 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+import com.payment_service.enums.PaymentStatus;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class PaymentRequest {
     @NotBlank(message = "User ID is required")
-    private String userId;
+    private Long userId;
 
     @NotBlank(message = "Product ID is required")
-    private String productId;
+    private Long productId;
 
     @NotBlank(message = "Order ID is required")
-    private String orderId;
+    private Long orderId;
 
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
@@ -32,4 +34,6 @@ public class PaymentRequest {
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
     private BigDecimal amount;
+
+    private PaymentStatus status;
 }
