@@ -1,3 +1,95 @@
+server:
+  port: 8015
+
 spring:
   application:
-    name: PAYMENT-SERVICE
+    name: payment-service
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3314/payment_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: appuser
+    password: apppassword
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 10
+      idle-timeout: 30000
+      connection-timeout: 20000
+      
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        '[format_sql]': 'true'
+    hibernate:
+      ddl-auto: validate #update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
+    show-sql: 'true'
+
+  flyway:
+    enabled: true # Enables Flyway migrations on application startup
+    baseline-on-migrate: true # Prevents accidental execution against an empty database without a baseline
+    locations:
+      - classpath:db/migration
+      - classpath:db/testdata
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    listener:
+      ack-mode: RECORD
+      observation-enabled: true
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: http://localhost:8081
+
+    consumer:
+      group-id: payment-saga-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: http://localhost:8081
+        specific.avro.reader: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:-},%X{traceId:-},%X{spanId:-}]"
+
+# ===================================================================
+# FIXED OBSERVABILITY & TRACING CONFIGURATION
+# ===================================================================
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    slo:
+      http.server.requests:
+        - 100ms
+        - 200ms
+        - 500ms
+        - 1s
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/  # Added the missing forward slash here
+    register-with-eureka: true
+    fetch-registry: true
+  # instance:
+  #   prefer-ip-address: true
+  #   instance-id: ${spring.application.name}:${server.port}:${random.value}
+        
