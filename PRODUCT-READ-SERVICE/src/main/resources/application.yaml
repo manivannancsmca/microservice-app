@@ -1,7 +1,11 @@
 spring:
   application:
     name: product-query-service
-
+  
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 3s
 
   data:
     redis:
