@@ -16,5 +16,5 @@ public class ProductRequest {
     private BigDecimal price;
     
     @Positive(message = "Initial inventory must be positive")
-    private Integer stock;
+    private String skuCode;
 }
