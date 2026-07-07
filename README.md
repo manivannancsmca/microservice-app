@@ -26,33 +26,32 @@ curl -X DELETE "http://localhost:8081/subjects/inventory-allocated-topic-value?p
 | `SELECT * WHERE name='iphone';`  | `GET products/_search` with a `match` query |
 | `DROP TABLE products;`           | `DELETE products`                           |
 | `CREATE TABLE products...`       | `PUT products`                              |
-|----------------------------------|---------------------------------------------|
 
 ---
 
 ### Commands you'll use most in Kibana Dev Tools
 
-# List all indices
+1. List all indices
 GET _cat/indices?v
 
-# View all documents
+2. View all documents
 GET products/_search
 
-# View first 10 documents
+3. View first 10 documents
 GET products/_search
 {
   "size": 10
 }
 
-# Count documents
+4. Count documents
 GET products/_count
 
-# View mapping
+5. View mapping
 GET products/_mapping
 
-# Get a document by ID
+6. Get a document by ID
 GET products/_doc/1
 
-# Delete an index
+7. Delete an index
 DELETE products
 
