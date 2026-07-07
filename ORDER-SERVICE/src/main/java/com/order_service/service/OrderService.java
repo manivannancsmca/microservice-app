@@ -14,10 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.common.avro.schemas.OrderPlacedEvent;
 import com.order_service.client.ProductClient;
+import com.order_service.client.UserClient;
 import com.order_service.dto.OrderRequest;
 import com.order_service.dto.OrderResponse;
 import com.order_service.dto.ProductResponse;
 import com.order_service.dto.StandardResponse;
+import com.order_service.dto.UserResponse;
 import com.order_service.entity.Order;
 import com.order_service.enums.OrderStatus;
 import com.order_service.exception.ResourceNotFoundException;
@@ -31,6 +33,8 @@ public class OrderService {
 
     private final ProductClient productClient;
 
+    private final UserClient userClient;
+
     private final OrderRepository orderRepository;
 
     private final KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
@@ -40,21 +44,31 @@ public class OrderService {
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
 
-        ResponseEntity<StandardResponse<ProductResponse>> feignResponse = productClient
+        ResponseEntity<StandardResponse<ProductResponse>> feignProductResponse = productClient
                 .getProductById(request.getProductId());
 
-        if (feignResponse.getBody() == null || !feignResponse.getBody().isSuccess()
-                || feignResponse.getBody().getData() == null) {
+        ResponseEntity<StandardResponse<UserResponse>> feignUserResponse = userClient
+                .getUserById(request.getUserId());
+
+        if (feignProductResponse.getBody() == null || !feignProductResponse.getBody().isSuccess()
+                || feignProductResponse.getBody().getData() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product details are invalid or missing.");
         }
 
-        ProductResponse productDetails = feignResponse.getBody().getData();
+        if (feignUserResponse.getBody() == null || !feignUserResponse.getBody().isSuccess()
+                || feignUserResponse.getBody().getData() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User details are invalid or missing.");
+        }
+
+        ProductResponse productDetails = feignProductResponse.getBody().getData();
+
+        UserResponse userDetails = feignUserResponse.getBody().getData();
 
         BigDecimal totalPrice = productDetails.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
 
         Order order = Order.builder()
-                .productId(request.getProductId())
-                .userId(request.getUserId())
+                .productId(productDetails.getId())
+                .userId(userDetails.getId())
                 .quantity(request.getQuantity())
                 .totalPrice(totalPrice)
                 .orderStatus(OrderStatus.PENDING)
