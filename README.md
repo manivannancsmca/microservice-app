@@ -57,16 +57,25 @@ DELETE products
 
 Since your index is products, you can insert documents directly from Kibana Dev Tools.
 
-Step 1: Open Kibana Dev Tools
+# Elasticsearch Products Index Setup Guide
+
+This guide explains how to insert and search documents in the `products` index using **Kibana Dev Tools**.
+
+## Inserting Documents
+
+Since your index is `products`, you can insert documents directly from Kibana Dev Tools.
+
+### Step 1: Open Kibana Dev Tools
 
 Go to:
 
-Kibana
-  -> Dev Tools
-Step 2: Create a document
+**Kibana → Dev Tools**
+
+### Step 2: Create a Document
 
 Execute the following request:
 
+```http
 POST products/_doc
 {
   "id": "1",
@@ -77,25 +86,32 @@ POST products/_doc
   "createdAt": "2026-07-08T12:00:00Z",
   "updatedAt": "2026-07-08T12:00:00Z"
 }
+```
 
-Response:
+**Response:**
 
+```json
 {
   "_index": "products",
   "_id": "abc123xyz...",
   "result": "created"
 }
-Step 3: Specify your own Elasticsearch document ID (Recommended)
+```
 
-Notice that your Java class has
+### Step 3: Specify Your Own Elasticsearch Document ID (Recommended)
 
+Notice that your Java class has:
+
+```java
 @Id
 private String id;
+```
 
-This does not automatically become the Elasticsearch _id when you insert data through Kibana. It is simply another field inside the document.
+This does **not** automatically become the Elasticsearch `_id` when inserting via Kibana. It is simply another field inside the document.
 
-If you want the Elasticsearch document ID to also be 1, do this instead:
+To set both `_id` and the `id` field to the same value, use:
 
+```http
 PUT products/_doc/1
 {
   "id": "1",
@@ -106,25 +122,30 @@ PUT products/_doc/1
   "createdAt": "2026-07-08T12:00:00Z",
   "updatedAt": "2026-07-08T12:00:00Z"
 }
+```
 
-Now
+Now `_id = 1` and `id = 1`.
 
-_id = 1
-id  = 1
-Step 4: Verify the document
+### Step 4: Verify the Document
+
+```http
 GET products/_search
+```
 
 or
 
+```http
 GET products/_search
 {
   "query": {
     "match_all": {}
   }
 }
+```
 
-Output:
+**Example Output:**
 
+```json
 {
   "hits": {
     "hits": [
@@ -143,10 +164,15 @@ Output:
     ]
   }
 }
-Insert multiple documents
+```
 
-You can use the Bulk API.
+---
 
+## Insert Multiple Documents (Bulk API)
+
+You can insert multiple documents efficiently using the Bulk API:
+
+```http
 POST products/_bulk
 { "index": { "_id": "1" } }
 { "id":"1","name":"iPhone 16","description":"Apple Phone","price":89999,"skuCode":"IPH001","createdAt":"2026-07-08T12:00:00Z","updatedAt":"2026-07-08T12:00:00Z" }
@@ -154,8 +180,15 @@ POST products/_bulk
 { "id":"2","name":"Samsung S26","description":"Samsung Flagship","price":79999,"skuCode":"SAM001","createdAt":"2026-07-08T12:00:00Z","updatedAt":"2026-07-08T12:00:00Z" }
 { "index": { "_id": "3" } }
 { "id":"3","name":"OnePlus 14","description":"Fast Android Phone","price":59999,"skuCode":"ONE001","createdAt":"2026-07-08T12:00:00Z","updatedAt":"2026-07-08T12:00:00Z" }
-Search examples
-Search by name
+```
+
+---
+
+## Search Examples
+
+### Search by Name
+
+```http
 GET products/_search
 {
   "query": {
@@ -164,10 +197,13 @@ GET products/_search
     }
   }
 }
-Search by SKU
+```
 
-Because skuCode is a Keyword field:
+### Search by SKU Code
 
+Since `skuCode` is a **Keyword** field:
+
+```http
 GET products/_search
 {
   "query": {
@@ -176,7 +212,11 @@ GET products/_search
     }
   }
 }
-Search by price
+```
+
+### Search by Price Range
+
+```http
 GET products/_search
 {
   "query": {
@@ -188,10 +228,22 @@ GET products/_search
     }
   }
 }
-One important thing to verify
+```
 
-If the products index was created automatically before your Spring Data Elasticsearch mappings were applied, Elasticsearch may have inferred different field types (for example, treating price differently). Before inserting data, check the mapping:
+---
 
+## Important: Check Index Mapping
+
+If the `products` index was created automatically before your Spring Data Elasticsearch mappings were applied, Elasticsearch may have inferred incorrect field types.
+
+Check the current mapping:
+
+```http
 GET products/_mapping
+```
 
-If the mapping doesn't match your ProductDocument annotations, it's often best to delete the index and let your Spring Boot application recreate it with the correct mapping:
+**Recommendation**: If the mapping doesn't match your `ProductDocument` annotations, delete the index and let your Spring Boot application recreate it with the correct mapping.
+
+---
+
+**Happy Indexing!** 🚀
